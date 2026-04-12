@@ -1,0 +1,7 @@
+.pio
+.vscode/
+CLAUDE.md
+.DS_Store
+setup*
+.claude
+out

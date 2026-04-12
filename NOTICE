@@ -1,0 +1,34 @@
+ESP32_Dual_Vision_Thermal Project
+Copyright (c) 2026 ESP32_Dual_Vision_Thermal Project Contributors
+
+This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 
+International License (CC BY-NC 4.0).
+
+You may obtain a copy of the License at:
+https://creativecommons.org/licenses/by-nc/4.0/legalcode
+
+================================================================================
+THIRD-PARTY LIBRARIES NOTICE
+================================================================================
+
+This project uses the following third-party libraries which are NOT subject to 
+the CC BY-NC license:
+
+1. ESP32 Arduino Core
+   - License: LGPL-2.1
+   - Repository: https://github.com/espressif/arduino-esp32
+
+2. TFT_eSPI
+   - License: FreeBSD
+   - Repository: https://github.com/Bodmer/TFT_eSPI
+
+3. MLX90640 Driver
+   - License: Apache-2.0
+   - Repository: https://github.com/melexis/mlx90640-library
+
+These libraries retain their original licenses and may be used commercially
+under their respective terms. This project only calls these libraries via 
+standard APIs without modifying their source code.
+
+For commercial use inquiries regarding this project's original code, please 
+contact the project maintainers.
