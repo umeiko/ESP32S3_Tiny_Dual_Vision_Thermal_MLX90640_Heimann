@@ -3,8 +3,8 @@
 #include "screen.hpp"
 
 void serial_start() {
-  Serial.begin(115200);
-  Serial.println("Serial communication initialized.");
+    Serial.setTimeout(0);
+    Serial.begin(115200);
 }
 
 // Supports 'h' for help menu

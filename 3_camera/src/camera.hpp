@@ -8,50 +8,31 @@
 // 摄像头在这块板子上的引脚定义
 #define CAM_WIDTH 320
 #define CAM_HEIGHT 240
-#define PWDN_GPIO_NUM     17
-#define RESET_GPIO_NUM    26
-#define XCLK_GPIO_NUM     14
-#define PCLK_GPIO_NUM     22
-#define SIOD_GPIO_NUM     23
-#define SIOC_GPIO_NUM     18
-#define VSYNC_GPIO_NUM    21
-#define HREF_GPIO_NUM     27
+#define PWDN_GPIO_NUM     -1
+#define RESET_GPIO_NUM    -1
+#define XCLK_GPIO_NUM     39
+#define PCLK_GPIO_NUM     36
+#define SIOD_GPIO_NUM     10
+#define SIOC_GPIO_NUM     11
+#define VSYNC_GPIO_NUM    18
+#define HREF_GPIO_NUM     21
 #define D0_GPIO_NUM       34
-#define D1_GPIO_NUM       33
-#define D2_GPIO_NUM       25
-#define D3_GPIO_NUM       35
-#define D4_GPIO_NUM       39
-#define D5_GPIO_NUM       38
-#define D6_GPIO_NUM       37
-#define D7_GPIO_NUM       36
-#define I2CPULL_UP  19
-#define I2CPULL_UP_OPEN  LOW
+#define D1_GPIO_NUM       47
+#define D2_GPIO_NUM       48
+#define D3_GPIO_NUM       33
+#define D4_GPIO_NUM       35
+#define D5_GPIO_NUM       37
+#define D6_GPIO_NUM       38
+#define D7_GPIO_NUM       40
 
 bool camera_ok = false;
 camera_fb_t *fb = NULL;
 
-// 摄像头电平初始化
-void camera_hard_reset() {
-    pinMode(I2CPULL_UP, OUTPUT);
-    digitalWrite(I2CPULL_UP, I2CPULL_UP_OPEN);
-    delay(200);
-    pinMode(PWDN_GPIO_NUM, OUTPUT);
-    digitalWrite(PWDN_GPIO_NUM, HIGH);
-    delay(100);
-    digitalWrite(PWDN_GPIO_NUM, LOW);
-    delay(200);
-}
-
 void camera_init(){
     // 关闭欠压检测
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); 
-    // 摄像头上电
-    camera_hard_reset();
-    pinMode(I2CPULL_UP, OUTPUT);
-    digitalWrite(I2CPULL_UP, I2CPULL_UP_OPEN);
-    // 等待摄像头上电
-    delay(2500);
-    // check_camera_i2c();
+    delay(500);
+
     camera_config_t config;
     config.ledc_channel = LEDC_CHANNEL_0;
     config.ledc_timer = LEDC_TIMER_0;

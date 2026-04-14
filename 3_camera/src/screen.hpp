@@ -5,10 +5,10 @@
 #include <Arduino.h>
 #include "miku_jpg.hpp"
 
-#define PIN_BLK 4
+#define PIN_BLK 6
 uint8_t brightness = 185; // Default brightness level
 
-static const uint16_t screenWidth  = 320;
+static const uint16_t screenWidth  = 280;
 static const uint16_t screenHeight = 240;
 
 TFT_eSPI tft = TFT_eSPI(screenHeight, screenWidth); /* TFT instance */

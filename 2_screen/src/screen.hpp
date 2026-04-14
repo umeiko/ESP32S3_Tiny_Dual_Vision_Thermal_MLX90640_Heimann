@@ -78,7 +78,7 @@ void screen_init(){
     tft.init();
     tft.setRotation(1); 
     tft.setSwapBytes(true);
-    tft.invertDisplay(false); 
+    tft.invertDisplay(true);
 
     // 打开屏幕之后要做的事情：慢慢打开屏幕，然后绘制一个可爱的miku图片
     render_miku();
