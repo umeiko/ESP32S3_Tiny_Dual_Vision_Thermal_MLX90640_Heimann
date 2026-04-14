@@ -4,9 +4,6 @@
 
 void serial_start() {
   Serial.begin(115200);
-  while (!Serial) {
-    ; // 等待串口连接
-  }
   Serial.println("Serial communication initialized.");
 }
 

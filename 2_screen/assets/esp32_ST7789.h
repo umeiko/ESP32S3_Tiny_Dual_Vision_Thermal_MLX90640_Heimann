@@ -4,10 +4,10 @@
 #define ST7789_DRIVER     // Configure all registers
 
 #define TFT_WIDTH  240
-#define TFT_HEIGHT 320
+#define TFT_HEIGHT 280
 #define CGRAM_OFFSET      // Library will add offsets required
 // #define TFT_RGB_ORDER TFT_RGB  // Colour order Red-Green-Blue
-#define TFT_RGB_ORDER TFT_BGR  // Colour order Blue-Green-Red
+#define TFT_RGB_ORDER TFT_RGB  // Colour order Blue-Green-Red
 
 //#define TFT_INVERSION_ON
 //#define TFT_INVERSION_OFF
@@ -15,9 +15,9 @@
 
 #define ESP32_DMA
 
-#define TFT_MOSI 12
-#define TFT_SCLK 13
-#define TFT_CS 15
+#define TFT_MOSI 5
+#define TFT_SCLK 4
+#define TFT_CS 3
 #define TFT_DC 2
 // #define TFT_RST -1
 
