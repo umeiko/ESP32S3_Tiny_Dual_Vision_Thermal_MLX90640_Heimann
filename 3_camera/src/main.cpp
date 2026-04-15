@@ -5,9 +5,8 @@
 
 void setup() {
   serial_start();
-  camera_init();
   screen_init();
-
+  camera_init();
   // 先渲染一帧画面再点亮屏幕，比较优雅
   camera_loop();
   smooth_on();

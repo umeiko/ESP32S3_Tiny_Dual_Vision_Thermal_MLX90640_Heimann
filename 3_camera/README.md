@@ -36,8 +36,6 @@
 * **`pixel_format = PIXFORMAT_JPEG`**：让摄像头直接输出压缩好的 JPEG 图片，否则数据量太大，传输会卡顿。
 * **`fb_location = CAMERA_FB_IN_PSRAM`**：**关键点！** 一张图片可能几十 KB，ESP32 内部内存寸土寸金，必须把图片存到外部的 PSRAM 里。
 
-![结构展示](./assets/lesson3_psram.png)
-
 ### 2. 搬运工 (camera_loop)
 这是主循环中不断运行的代码：
 
@@ -67,7 +65,7 @@ void camera_loop(){
 2. 扣上卡扣时要轻，听到“咔哒”一声才算锁紧。
 3. **不要在通电状态下插拔摄像头**，极易烧毁传感器！
 
-![alt text](./assets/lesson3_camera_cable.png.png)
+![alt text](./assets/lesson3_camera_cable.png)
 
 ### 开始烧录
 1. 连接 ESP32，点击底部工具栏的 **→ (烧录)**。
@@ -81,6 +79,39 @@ Camera init okay
 紧接着，你的屏幕上就会出现流畅的实时画面了！
 
 ![alt text](./assets/lesson3_live_view.png)
+
+### 串口调试命令
+
+除了观察实时画面，我们还提供了几个方便的串口 CLI 命令，可以在串口监视器中输入进行调试：
+
+* **`check_camera`** — 工厂测试：检查摄像头连接与初始化状态。
+* **`test_camera`** — 工厂测试：尝试捕获一帧画面并打印帧信息。
+* **`top`** — 查看当前 Internal heap 与 PSRAM 的使用情况。
+
+示例输出如下：
+
+```text
+=========================================
+---- 已发送 utf8 编码消息: "check_camera\r\n" ----
+=== Camera Connection Test ===
+OK: Camera initialized successfully
+INFO: Camera PID=0x3660 (OV3660)
+==============================
+---- 已发送 utf8 编码消息: "test_camera\r\n" ----
+=== Camera Capture Test ===
+OK: Frame captured successfully
+INFO: Frame size=240x240, format=JPEG, length=5618 bytes
+===========================
+---- 已发送 utf8 编码消息: "top\r\n" ----
+[137339]Internal heap: 50124 / 388212 bytes (12.91% used)
+[137339]PSRAM: 25216 / 2097151 bytes (1.20% used)
+---- 已发送 utf8 编码消息: "top\r\n" ----
+[140719]Internal heap: 50388 / 388212 bytes (12.98% used)
+[140719]PSRAM: 25216 / 2097151 bytes (1.20% used)
+---- 已发送 utf8 编码消息: "top\r\n" ----
+[144253]Internal heap: 50388 / 388212 bytes (12.98% used)
+[144253]PSRAM: 25216 / 2097151 bytes (1.20% used)
+```
 ---
 
 ## 🐞 常见报错与避坑指南 (必看！)

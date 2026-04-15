@@ -76,9 +76,9 @@ void screen_init(){
     digitalWrite(PIN_BLK, LOW);
     
     tft.init();
-    tft.setRotation(1); 
+    tft.setRotation(3); 
     tft.setSwapBytes(true);
-    tft.invertDisplay(false); 
+    tft.invertDisplay(true); 
 
     // 打开屏幕之后要做的事情：慢慢打开屏幕，然后绘制一个可爱的miku图片
     render_miku();
@@ -86,6 +86,8 @@ void screen_init(){
     smooth_on();
     delay(500);
     smooth_off();
+    tft.setRotation(0);
+    tft.fillScreen(TFT_BLACK);
 }
 
 // 支持的命令：screen off, screen on, screen brightness <value>
@@ -113,4 +115,33 @@ void screen_cli(String cmd){
         // 未知指令提示
         Serial.println("[Error] Unknown screen command: " + cmd);
     }
+}
+
+// 在屏幕底部 40px 黑边区域绘制 FPS 与内存信息
+void draw_camera_overlay(float fps, size_t free_heap, size_t free_psram, size_t frame_len){
+    const int bar_y = 240;
+    const int bar_h = 40;
+    const int bar_w = 240;
+    
+    // 清空底部信息条背景（只清中间安全区，保留最边缘像素避免闪）
+    tft.fillRect(0, bar_y, bar_w, bar_h, TFT_BLACK);
+    
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextSize(1);
+    tft.setTextDatum(MC_DATUM); // 以坐标为文字中心，方便居中避开圆角
+    
+    size_t total_internal = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+    size_t total_psram = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+    float heap_pct = total_internal ? ((float)(total_internal - free_heap) * 100.0f / total_internal) : 0.0f;
+    float psram_pct = total_psram ? ((float)(total_psram - free_psram) * 100.0f / total_psram) : 0.0f;
+    float sz_kb = frame_len / 1024.0f;
+    
+    int cx = bar_w / 2;
+    int y = bar_y + 12; // 位于黑边上半部分，避开底部圆角
+    
+    tft.drawString("FPS:" + String(fps, 1) + "  RAM:" + String(heap_pct, 1) + "%  PSRAM:" + String(psram_pct, 1) + "%", cx, y);
+    y += 14;
+    tft.drawString("Image Size:" + String(sz_kb, 2) + " kb", cx, y);
+    
+    tft.setTextDatum(TL_DATUM); // 恢复默认左上角基准
 }

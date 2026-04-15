@@ -28,6 +28,10 @@
 bool camera_ok = false;
 camera_fb_t *fb = NULL;
 
+unsigned long fps_last_time = 0;
+int fps_frame_count = 0;
+float fps_current = 0.0f;
+
 void camera_init(){
     // 关闭欠压检测
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); 
@@ -53,7 +57,7 @@ void camera_init(){
     config.pin_pwdn = PWDN_GPIO_NUM;
     config.pin_reset = RESET_GPIO_NUM;
     config.xclk_freq_hz = 10000000;
-    config.frame_size = FRAMESIZE_QVGA;  // 320*240
+    config.frame_size = FRAMESIZE_240X240;  // 320*240
     config.pixel_format = PIXFORMAT_JPEG; // for streaming
     config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
     config.fb_location = CAMERA_FB_IN_PSRAM;
@@ -109,10 +113,21 @@ void screen_draw_jpeg(const uint8_t* jpg_data, size_t len){
 }
 
 void camera_loop(){ 
+    static bool no_signal_shown = false;
     if (!camera_ok) {
+        if (!no_signal_shown) {
+            tft.fillScreen(TFT_BLACK);
+            tft.setTextDatum(MC_DATUM);
+            tft.setTextSize(2);
+            tft.drawString("NO SIGNAL", tft.width() / 2, tft.height() / 2);
+            tft.setTextDatum(TL_DATUM); // 恢复默认
+            no_signal_shown = true;
+        }
         return;
     }
-        // 1. 获取 JPEG 帧
+    no_signal_shown = false;
+    
+    // 1. 获取 JPEG 帧
     fb = esp_camera_fb_get();
     if (!fb) {
         Serial.printf("Camera capture failed\n");
@@ -120,6 +135,16 @@ void camera_loop(){
         fb = NULL;
         return;
     }
+    
+    // 统计帧率
+    fps_frame_count++;
+    unsigned long now = millis();
+    if (now - fps_last_time >= 1000) {
+        fps_current = fps_frame_count * 1000.0f / (now - fps_last_time);
+        fps_frame_count = 0;
+        fps_last_time = now;
+    }
+    
      if (fb->format == PIXFORMAT_JPEG) {
         // 2. 配置解码器
         TJpgDec.setJpgScale(1); // 1:1 解码，不缩放
@@ -128,7 +153,58 @@ void camera_loop(){
     } else {
         Serial.println("Non-JPEG frame received!");
     }
+    
+    // 在右侧黑边显示帧率与内存信息
+    size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    size_t free_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    draw_camera_overlay(fps_current, free_heap, free_psram, fb->len);
+    
     // 6. 释放摄像头帧缓冲
     esp_camera_fb_return(fb);
     fb = NULL;
+}
+
+void camera_cli(String command){
+    command.trim();
+    if (command.startsWith("check_camera")){
+        // 工厂测试：检查摄像头连接状态
+        Serial.println("=== Camera Connection Test ===");
+        // 检查摄像头初始化状态
+        if (camera_ok) {
+            Serial.println("OK: Camera initialized successfully");
+            sensor_t *s = esp_camera_sensor_get();
+            if (s) {
+                Serial.printf("INFO: Camera PID=0x%04X ", s->id.PID);
+                if (s->id.PID == OV2640_PID) Serial.println("(OV2640)");
+                else if (s->id.PID == OV3660_PID) Serial.println("(OV3660)");
+                else Serial.println("(Unknown)");
+            }
+        } else {
+            Serial.println("FAIL: Camera not initialized");
+        }
+        Serial.println("==============================");
+    }else if (command.startsWith("test_camera")){
+        // 工厂测试：测试摄像头获取画面
+        Serial.println("=== Camera Capture Test ===");
+        if (!camera_ok) {
+            Serial.println("FAIL: Camera not initialized");
+            Serial.println("===========================");
+            return;
+        }
+        // 尝试获取一帧
+        camera_fb_t *test_fb = esp_camera_fb_get();
+        if (test_fb) {
+            Serial.println("OK: Frame captured successfully");
+            Serial.printf("INFO: Frame size=%dx%d, format=%s, length=%d bytes\n",
+                          test_fb->width, test_fb->height,
+                          (test_fb->format == PIXFORMAT_JPEG) ? "JPEG" : "Other",
+                          test_fb->len);
+            esp_camera_fb_return(test_fb);
+        } else {
+            Serial.println("FAIL: Failed to capture frame");
+        }
+        Serial.println("===========================");
+    }else{
+        Serial.println("[Error] Unknown camera command: " + command);
+    }
 }
