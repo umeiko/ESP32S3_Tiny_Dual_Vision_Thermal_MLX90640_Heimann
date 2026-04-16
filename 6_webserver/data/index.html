@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32-S3 双光谱监控</title>
+<style>
+  body { margin: 0; background: #111; color: #eee; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; }
+  h2 { margin: 12px; font-size: 1.3rem; }
+  .container { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; padding: 10px; max-width: 100%; }
+  .panel { background: #222; border-radius: 10px; padding: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+  .panel div { font-size: 0.9rem; margin-bottom: 6px; color: #aaa; }
+  img, canvas { display: block; max-width: 100%; height: auto; border-radius: 6px; background: #000; }
+  #info { font-size: 13px; color: #ccc; margin-top: 6px; }
+</style>
+</head>
+<body>
+<h2>ESP32-S3 可见光 & 热成像</h2>
+<div class="container">
+  <div class="panel">
+    <div>可见光 (OV2640)</div>
+    <img id="cam" width="320" height="240" alt="Camera Stream">
+  </div>
+  <div class="panel">
+    <div>热成像 (MLX90640)</div>
+    <canvas id="thermal" width="320" height="240"></canvas>
+    <div id="info">等待数据...</div>
+  </div>
+</div>
+<script>
+const camImg = document.getElementById('cam');
+const canvas = document.getElementById('thermal');
+const ctx = canvas.getContext('2d');
+const info = document.getElementById('info');
+
+// 与设备端一致的 RGB565 色阶表（180 级）
+const colormap = new Uint16Array([
+0x0002, 0x0003, 0x0003, 0x0004, 0x0004, 0x0005, 0x0005, 0x0006, 0x0006, 0x0007,
+0x0007, 0x0008, 0x0008, 0x0009, 0x0009, 0x000a, 0x000a, 0x000b, 0x000b, 0x000c,
+0x000c, 0x000d, 0x000d, 0x000e, 0x000e, 0x000f, 0x000f, 0x0010, 0x0010, 0x0011,
+0x0011, 0x0011, 0x0811, 0x0810, 0x1010, 0x1010, 0x1810, 0x180f, 0x200f, 0x200f,
+0x280f, 0x280e, 0x300e, 0x300e, 0x380e, 0x380d, 0x400d, 0x400d, 0x480d, 0x480c,
+0x500c, 0x500c, 0x580c, 0x580b, 0x600b, 0x600b, 0x680b, 0x680a, 0x700a, 0x700a,
+0x780a, 0x7809, 0x8009, 0x8009, 0x8809, 0x8808, 0x9008, 0x9008, 0x9808, 0x9807,
+0xa007, 0xa007, 0xa807, 0xa806, 0xb006, 0xb006, 0xb806, 0xb805, 0xc005, 0xc005,
+0xc805, 0xc804, 0xd004, 0xd004, 0xd804, 0xd803, 0xe003, 0xe003, 0xe803, 0xe802,
+0xf801, 0xf801, 0xf821, 0xf821, 0xf841, 0xf841, 0xf861, 0xf861, 0xf881, 0xf880,
+0xf8a0, 0xf8a0, 0xf8c0, 0xf8c0, 0xf8e0, 0xf8e0, 0xf900, 0xf900, 0xf920, 0xf920,
+0xf940, 0xf940, 0xf960, 0xf960, 0xf980, 0xf980, 0xf9a0, 0xf9a0, 0xf9c0, 0xf9c0,
+0xf9e0, 0xfa00, 0xfa20, 0xfa60, 0xfa80, 0xfac0, 0xfae0, 0xfb20, 0xfb40, 0xfb80,
+0xfba0, 0xfbe0, 0xfc00, 0xfc20, 0xfc60, 0xfc80, 0xfcc0, 0xfce0, 0xfd20, 0xfd40,
+0xfd80, 0xfda0, 0xfde0, 0xfe00, 0xfe40, 0xfe60, 0xfe80, 0xfec0, 0xfee0, 0xff20,
+0xff40, 0xff41, 0xff62, 0xff63, 0xff64, 0xff65, 0xff66, 0xff67, 0xff88, 0xff89,
+0xff8a, 0xff8b, 0xff8c, 0xff8d, 0xffae, 0xffaf, 0xffb1, 0xffb2, 0xffb3, 0xffb4,
+0xffd5, 0xffd6, 0xffd7, 0xffd8, 0xffd9, 0xffda, 0xfffb, 0xfffc, 0xfffd, 0xfffe
+]);
+
+function rgb565ToRgba(c) {
+  const r = ((c >> 11) & 0x1F) << 3;
+  const g = ((c >> 5) & 0x3F) << 2;
+  const b = (c & 0x1F) << 3;
+  return [r, g, b, 255];
+}
+
+let lastCamUrl = null;
+let ws;
+
+function connectWs() {
+  ws = new WebSocket('ws://' + location.host + '/ws');
+  ws.binaryType = 'arraybuffer';
+  ws.onmessage = (ev) => {
+    const data = new Uint8Array(ev.data);
+    if (data.length === 0) return;
+    const type = data[0];
+    if (type === 0x01) {
+      const blob = new Blob([data.subarray(1)], {type: 'image/jpeg'});
+      const url = URL.createObjectURL(blob);
+      camImg.onload = () => {
+        if (lastCamUrl) URL.revokeObjectURL(lastCamUrl);
+        lastCamUrl = url;
+      };
+      camImg.src = url;
+    } else if (type === 0x02) {
+      if (data.length < 11) return;
+      const w = data[1];
+      const h = data[2];
+      const view = new DataView(ev.data);
+      const tmin = view.getFloat32(3, true);
+      const tmax = view.getFloat32(7, true);
+      const pixels = data.subarray(11);
+      drawThermal(w, h, pixels, tmin, tmax);
+    }
+  };
+  ws.onclose = () => {
+    setTimeout(connectWs, 2000);
+  };
+  ws.onerror = (e) => {
+    console.error('WS error', e);
+  };
+}
+
+function drawThermal(w, h, pixels, tmin, tmax) {
+  const scaleX = canvas.width / w;
+  const scaleY = canvas.height / h;
+  const imgData = ctx.createImageData(canvas.width, canvas.height);
+  for (let y = 0; y < canvas.height; y++) {
+    const sy = Math.min(h - 1, Math.floor(y / scaleY));
+    for (let x = 0; x < canvas.width; x++) {
+      const sx = Math.min(w - 1, Math.floor(x / scaleX));
+      const idx = pixels[sy * w + sx];
+      const c = colormap[idx] || 0;
+      const [r, g, b, a] = rgb565ToRgba(c);
+      const off = (y * canvas.width + x) * 4;
+      imgData.data[off] = r;
+      imgData.data[off + 1] = g;
+      imgData.data[off + 2] = b;
+      imgData.data[off + 3] = a;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  info.textContent = `分辨率: ${w}x${h} | MIN: ${tmin.toFixed(1)}°C | MAX: ${tmax.toFixed(1)}°C`;
+}
+
+connectWs();
+</script>
+</body>
+</html>
