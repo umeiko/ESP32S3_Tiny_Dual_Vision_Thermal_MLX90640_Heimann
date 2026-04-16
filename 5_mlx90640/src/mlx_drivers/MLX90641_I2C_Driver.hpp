@@ -23,7 +23,7 @@
 #include "MLX90641_I2C_Driver.h"
 #include "Arduino.h"
 #include <Wire.h>
-#include "../shared_val.hpp"
+#include "../shared_val.h"
 
 void MLX90641_I2CInit()
 {   

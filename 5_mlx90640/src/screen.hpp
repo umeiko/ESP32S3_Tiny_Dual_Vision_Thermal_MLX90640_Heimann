@@ -5,10 +5,12 @@
 #include <Arduino.h>
 #include "miku_jpg.hpp"
 
-#define PIN_BLK 4
-#include "shared_val.hpp"  // 使用 shared_val.h 中定义的 brightness
-
-static const uint16_t screenWidth  = 320;
+#define PIN_BLK 6
+uint8_t brightness = 185; // Default brightness level
+#define PWM_CHANNEL 0     // LEDC PWM 通道
+#define PWM_FREQ 20000    // PWM 频率 20kHz (减少 I2C 干扰)
+#define PWM_RESOLUTION 8  // 8位分辨率 (0-255)
+static const uint16_t screenWidth  = 280;
 static const uint16_t screenHeight = 240;
 
 TFT_eSPI tft = TFT_eSPI(screenHeight, screenWidth); /* TFT instance */
@@ -16,22 +18,22 @@ TFT_eSPI tft = TFT_eSPI(screenHeight, screenWidth); /* TFT instance */
 // ================= 亮度控制 =================
 inline void set_brightness(int _brightness, bool remenber=true){
    if (_brightness < 255 && _brightness > 5){
-      analogWrite(PIN_BLK, _brightness);
+      ledcWrite(PWM_CHANNEL, _brightness);
       if (remenber) {brightness = _brightness;}
-   }else if(_brightness >= 255) 
+   }else if(_brightness >= 255)
     {
-        digitalWrite(PIN_BLK, HIGH);
+        ledcWrite(PWM_CHANNEL, 255);
         if (remenber){brightness = _brightness;}
    }else if(_brightness <= 5)
    {
-    analogWrite(PIN_BLK, 5); 
+    ledcWrite(PWM_CHANNEL, 5);
     if(remenber){brightness = _brightness;}
    }
 }
 
 // ================= 亮起屏幕 =================
 void smooth_on(){
-   digitalWrite(PIN_BLK, LOW);
+   ledcWrite(PWM_CHANNEL, 0);
    for(int i=0; i<brightness; i++){
       set_brightness(i, false);
       delay(2);
@@ -40,9 +42,9 @@ void smooth_on(){
 
 // ================= 熄灭屏幕 =================
 void smooth_off(){
-   analogWrite(PIN_BLK, brightness);
+   ledcWrite(PWM_CHANNEL, brightness);
    for(int i=brightness; i>=0; i--){
-      analogWrite(PIN_BLK, i);
+      ledcWrite(PWM_CHANNEL, i);
       delay(2);
    }
 }
@@ -74,18 +76,21 @@ void screen_init(){
     // 初始化屏幕背光的控制引脚
     pinMode(PIN_BLK, OUTPUT);
     digitalWrite(PIN_BLK, LOW);
+    ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+    ledcAttachPin(PIN_BLK, PWM_CHANNEL);
     
     tft.init();
     tft.setRotation(1); 
     tft.setSwapBytes(true);
-    tft.invertDisplay(false); 
-    tft.initDMA();
-    // 打开屏幕之后要做的事情：慢慢打开屏幕，然后绘制一个可爱的miku图片
+    tft.invertDisplay(true); 
+
+    // 打开屏幕之后要做的事情：慢慢打开屏幕，然后miku图片
     render_miku();
     delay(300);
     smooth_on();
     delay(500);
     smooth_off();
+    tft.fillScreen(TFT_BLACK);
 }
 
 // 支持的命令：screen off, screen on, screen brightness <value>
@@ -114,3 +119,4 @@ void screen_cli(String cmd){
         Serial.println("[Error] Unknown screen command: " + cmd);
     }
 }
+

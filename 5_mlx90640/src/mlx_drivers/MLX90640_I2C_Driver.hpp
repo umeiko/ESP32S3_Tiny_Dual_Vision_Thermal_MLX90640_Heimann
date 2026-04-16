@@ -18,7 +18,7 @@
 
 #include <Arduino.h>
 #include "MLX90640_I2C_Driver.h"
-#include "../shared_val.hpp"
+#include "../shared_val.h"
 void MLX90640_I2CInit()
 {
 

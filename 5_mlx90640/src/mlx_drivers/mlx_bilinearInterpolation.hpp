@@ -1,11 +1,13 @@
 // 双线性插值
 // By Umeko 2024.08.03
 
-#ifndef BIO_LINEAR_INTERPOLATION_H
-#define BIO_LINEAR_INTERPOLATION_H
+#ifndef MLX_BIO_LINEAR_INTERPOLATION_H
+#define MLX_BIO_LINEAR_INTERPOLATION_H
 
 #include <Arduino.h>
 #include <stdint.h>
+#include <esp_heap_caps.h>
+
 // ==========================================
 // 1. 定点数与查表配置
 // ==========================================
@@ -14,15 +16,56 @@
 
 // 最大支持分辨率表大小 (按最大可能的 MLX90640 双倍缩放预留)
 // Width: 32 * 18 = 576, Height: 32 * 18 = 576
-static int16_t src_x0_table[600];
-static int16_t src_fx_table[600];
-static int16_t src_y0_table[600];
-static int16_t src_fy_table[600];
+// 改为指针，动态分配在 PSRAM
+static int16_t* src_x0_table = nullptr;
+static int16_t* src_fx_table = nullptr;
+static int16_t* src_y0_table = nullptr;
+static int16_t* src_fy_table = nullptr;
 
 // 记录当前表格是为哪种配置生成的
 static int current_table_w = -1;
 static int current_table_h = -1;
 static int current_table_scale = -1;
+
+// 分配插值查找表内存（在 PSRAM 中）
+inline bool alloc_interp_tables(){
+    if (src_x0_table != nullptr) return true; // 已分配
+    
+    Serial.println("[Bilinear] Allocating interp tables in PSRAM...");
+    
+    src_x0_table = (int16_t*)heap_caps_malloc(600 * sizeof(int16_t), MALLOC_CAP_SPIRAM);
+    src_fx_table = (int16_t*)heap_caps_malloc(600 * sizeof(int16_t), MALLOC_CAP_SPIRAM);
+    src_y0_table = (int16_t*)heap_caps_malloc(600 * sizeof(int16_t), MALLOC_CAP_SPIRAM);
+    src_fy_table = (int16_t*)heap_caps_malloc(600 * sizeof(int16_t), MALLOC_CAP_SPIRAM);
+    
+    if (src_x0_table && src_fx_table && src_y0_table && src_fy_table) {
+        Serial.println("[Bilinear] Tables allocated successfully.");
+        return true;
+    } else {
+        Serial.println("[Bilinear] Failed to allocate tables!");
+        return false;
+    }
+}
+
+// 释放插值查找表内存
+inline void free_interp_tables() {
+    if (src_x0_table != nullptr) {
+        heap_caps_free(src_x0_table);
+        src_x0_table = nullptr;
+    }
+    if (src_fx_table != nullptr) {
+        heap_caps_free(src_fx_table);
+        src_fx_table = nullptr;
+    }
+    if (src_y0_table != nullptr) {
+        heap_caps_free(src_y0_table);
+        src_y0_table = nullptr;
+    }
+    if (src_fy_table != nullptr) {
+        heap_caps_free(src_fy_table);
+        src_fy_table = nullptr;
+    }
+}
 
 // ==========================================
 // 2. 核心实现
@@ -37,6 +80,12 @@ static int current_table_scale = -1;
 inline void init_interp_tables(int src_w, int src_h, int scale){
     // 如果配置没变，直接返回，利用缓存
     if (current_table_w == src_w && current_table_h == src_h && current_table_scale == scale){
+        return;
+    }
+    
+    // 确保表已分配
+    if (src_x0_table == nullptr) {
+        Serial.println("[Bilinear] Error: Tables not allocated!");
         return;
     }
 
@@ -77,7 +126,10 @@ inline void init_interp_tables(int src_w, int src_h, int scale){
  * @param src_w 源数据的真实宽度 (用于计算换行 Stride)
  * @param src_h 源数据的真实高度
  */
-inline int bio_linear_interpolation(int dst_x, int dst_y, unsigned short *src_data, int src_w, int src_h){
+inline int mlx_bio_linear_interpolation(int dst_x, int dst_y, unsigned short *src_data, int src_w, int src_h){
+    // 检查表是否已分配
+    if (src_x0_table == nullptr) return 0;
+    
     // 1. 查表
     int src_x0 = src_x0_table[dst_x];
     int src_y0 = src_y0_table[dst_y];

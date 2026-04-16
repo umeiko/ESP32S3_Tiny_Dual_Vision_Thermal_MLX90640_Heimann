@@ -16,7 +16,6 @@
 */
 #ifndef _MLX90640_I2C_Driver_H_
 #define _MLX90640_I2C_Driver_H_
-// #include "../shared_val.h"
 #include <stdint.h>
 #include <Wire.h>
 //Define the size of the I2C buffer based on the platform the user has
