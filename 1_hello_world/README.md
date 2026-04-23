@@ -14,10 +14,10 @@
 
 1. **下载并安装 VS Code**: [点击这里前往官网下载 Visual Studio Code](https://code.visualstudio.com/)。
 2. **安装 PlatformIO 插件**: 打开 VS Code 后，点击左侧边栏的“扩展 (Extensions)”图标（由四个方块组成），在搜索框输入 `PlatformIO IDE` 并点击安装。安装完成后，左侧会出现一个“外星人头”图标。
-
 ![安装 PlatformIO 插件](./assets/pio_extension.png)
 
 3. **安装 Arduino-ce 插件**: 在搜索框输入 `Arduino Community Edition` 并点击安装。
+![安装 Arduino-ce 插件](./assets/ArduinoCE.png)
 ---
 
 ## 📂 第二步：打开项目与认识代码
@@ -67,7 +67,8 @@ PlatformIO 把最常用的功能都为你整理好了，就放在 VS Code 界面
 
 烧录完成后，我们来测试一下真正的功能：
 
-1. 点击底部工具栏的 **🔌 (插头图标)** 或使用ArduinoCE的 **串行监视器** 打开串口监视器。
+1. 使用ArduinoCE的 **串行监视器** 打开串口监视器。由于USBCDC串口的兼容性问题，注意需要关闭RTS和DTR功能：
+![关闭流控](./assets/note.png)
 2. 按下 ESP32 板子上的 `RST` 或 `EN` 按钮重启一下板子。
 3. 你会看到屏幕上打印出：`Serial communication initialized.`
 4. 在终端的输入框中敲入 `h`，然后按回车。板子会立刻回复你可用的命令菜单。
