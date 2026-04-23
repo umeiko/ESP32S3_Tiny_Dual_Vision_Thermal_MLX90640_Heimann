@@ -67,6 +67,10 @@ void setup() {
 void loop() {
   serial_loop();
   touch_loop();
-  screen_loop();
+  if (current_disp == DISP_THERMAL) {
+      screen_loop();
+    }else{
+      camera_loop();
+    }
   ws_loop();
 }

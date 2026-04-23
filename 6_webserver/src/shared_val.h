@@ -8,6 +8,12 @@ bool flag_in_photo_mode = false;  // 是否在拍照模式（即屏幕显示 MLX
 #define MLX_SDA  42
 #define MLX_SCL  41
 
+// 定义显示类型
+#define DISP_THERMAL false
+#define DISP_CAMERA  true
+
+bool current_disp = DISP_THERMAL;
+bool disp_changed = false;
 // 定义传感器类型
 enum {
     SENSOR_NONE,

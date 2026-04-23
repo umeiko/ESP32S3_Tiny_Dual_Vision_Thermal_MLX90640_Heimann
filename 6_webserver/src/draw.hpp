@@ -189,5 +189,9 @@ void draw_nosignal_screen(){
 void screen_loop(){
     if (flag_in_photo_mode){delay(5); return;}
     if (sensor_status != CONNECTED) {return;}
+    if (disp_changed){
+      tft.setRotation(1);
+      disp_changed = false;
+    }
     screen_loop_mlx();
 }

@@ -34,7 +34,31 @@ float fps_current = 0.0f;
 
 // 占位实现：在右侧黑边显示帧率与内存信息（如需自定义 UI 可在此扩展）
 inline void draw_camera_overlay(float fps, size_t free_heap, size_t free_psram, size_t frame_len) {
-    // 默认空实现，防止链接错误
+    const int bar_y = 240;
+    const int bar_h = 40;
+    const int bar_w = 240;
+    
+    // 清空底部信息条背景（只清中间安全区，保留最边缘像素避免闪）
+    tft.fillRect(0, bar_y, bar_w, bar_h, TFT_BLACK);
+    
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextSize(1);
+    tft.setTextDatum(MC_DATUM); // 以坐标为文字中心，方便居中避开圆角
+    
+    size_t total_internal = heap_caps_get_total_size(MALLOC_CAP_INTERNAL);
+    size_t total_psram = heap_caps_get_total_size(MALLOC_CAP_SPIRAM);
+    float heap_pct = total_internal ? ((float)(total_internal - free_heap) * 100.0f / total_internal) : 0.0f;
+    float psram_pct = total_psram ? ((float)(total_psram - free_psram) * 100.0f / total_psram) : 0.0f;
+    float sz_kb = frame_len / 1024.0f;
+    
+    int cx = bar_w / 2;
+    int y = bar_y + 12; // 位于黑边上半部分，避开底部圆角
+    
+    tft.drawString("FPS:" + String(fps, 1) + "  RAM:" + String(heap_pct, 1) + "%  PSRAM:" + String(psram_pct, 1) + "%", cx, y);
+    y += 14;
+    tft.drawString("Image Size:" + String(sz_kb, 2) + " kb", cx, y);
+    
+    tft.setTextDatum(TL_DATUM); // 恢复默认左上角基准
 }
 
 void camera_init(){
@@ -120,7 +144,61 @@ void screen_draw_jpeg(const uint8_t* jpg_data, size_t len){
     tft.endWrite();
 }
 
-void camera_loop(){
+void camera_loop(){ 
+    if (disp_changed){
+        tft.setRotation(0);
+        tft.fillScreen(TFT_BLACK);
+        disp_changed = false;
+    }
+    static bool no_signal_shown = false;
+    if (!camera_ok) {
+        if (!no_signal_shown) {
+            tft.fillScreen(TFT_BLACK);
+            tft.setTextDatum(MC_DATUM);
+            tft.setTextSize(2);
+            tft.drawString("NO SIGNAL", tft.width() / 2, tft.height() / 2);
+            tft.setTextDatum(TL_DATUM); // 恢复默认
+            no_signal_shown = true;
+        }
+        return;
+    }
+    no_signal_shown = false;
+    
+    // 1. 获取 JPEG 帧
+    fb = esp_camera_fb_get();
+    if (!fb) {
+        Serial.printf("Camera capture failed\n");
+        esp_camera_fb_return(fb); // 即使失败也要尝试归还
+        fb = NULL;
+        return;
+    }
+    
+    // 统计帧率
+    fps_frame_count++;
+    unsigned long now = millis();
+    if (now - fps_last_time >= 1000) {
+        fps_current = fps_frame_count * 1000.0f / (now - fps_last_time);
+        fps_frame_count = 0;
+        fps_last_time = now;
+    }
+    
+     if (fb->format == PIXFORMAT_JPEG) {
+        // 2. 配置解码器
+        TJpgDec.setJpgScale(1); // 1:1 解码，不缩放
+        TJpgDec.setSwapBytes(false); // 交换字节序 (Big/Little Endian)
+        screen_draw_jpeg(fb->buf, fb->len); // 画 JPEG 到屏幕
+    } else {
+        Serial.println("Non-JPEG frame received!");
+    }
+    
+    // 在右侧黑边显示帧率与内存信息
+    size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    size_t free_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    draw_camera_overlay(fps_current, free_heap, free_psram, fb->len);
+    
+    // 6. 释放摄像头帧缓冲
+    esp_camera_fb_return(fb);
+    fb = NULL;
 }
 
 void camera_cli(String command){
