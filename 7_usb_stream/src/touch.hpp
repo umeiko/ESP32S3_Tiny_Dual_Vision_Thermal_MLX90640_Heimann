@@ -8,8 +8,7 @@
 #include "shared_val.h"
 
 // 引脚定义：触摸
-uint8_t TOUCH_SDA = 10;
-uint8_t TOUCH_SCL = 11;
+
 #define PinNotUsed 254
 #define TOUCH_RST PinNotUsed
 #define ROTATE 1

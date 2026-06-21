@@ -68,7 +68,7 @@ void setup() {
 
 void loop() {
   serial_loop();
-  touch_loop();
+  touch_loop();  // 如果不接触摸屏的话一定要注释这个
   if (is_composite_streaming){
     draw_streaming_screen();
   }else{

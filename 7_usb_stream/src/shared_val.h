@@ -8,7 +8,8 @@ bool flag_in_photo_mode = false;  // 是否在拍照模式（即屏幕显示 MLX
 bool camera_ok = false;
 #define MLX_SDA  42
 #define MLX_SCL  41
-
+#define TOUCH_SDA 10
+#define TOUCH_SCL 11
 // 定义显示类型
 #define DISP_THERMAL false
 #define DISP_CAMERA  true

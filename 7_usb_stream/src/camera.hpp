@@ -64,6 +64,7 @@ inline void draw_camera_overlay(float fps, size_t free_heap, size_t free_psram, 
 
 void camera_init(){
     // 关闭欠压检测
+    touchWire->begin(TOUCH_SDA, TOUCH_SCL);
     WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); 
     delay(500);
 
